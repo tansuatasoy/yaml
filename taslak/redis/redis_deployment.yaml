@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taslak-redis
+  namespace: taslak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: taslak-redis
+  template:
+    metadata:
+      labels:
+        app: taslak-redis
+    spec:
+      # nodeSelector:
+      #   kubernetes.io/hostname: k8s-test-w01
+      containers:
+      - name: redis
+        image: redis:7.4.2
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 6379
+        # command: []
+        command:
+          - "redis-server"
+          - "--appendonly"
+          - "yes"
+          - "--appendfsync"
+          - "everysec"
+          - "--requirepass"
+          - "$(REDIS_PASSWORD)"
+          - "--loglevel"
+          - "debug"
+          - "--logfile"
+          - "/dev/stdout"
+          - "--notify-keyspace-events"
+          - "KEA"
+        args: []
+        # securityContext:
+        #   runAsUser: 1000
+        #   runAsGroup: 1000
+        #   fsGroup: 2000
+        # resources:
+        #   requests:
+        #     memory: "512Mi"
+        #     cpu: "250m"
+        #   limits:
+        #     memory: "1024Mi"
+        #     cpu: "500m"
+        livenessProbe:
+          tcpSocket:
+            port: 6379
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 6379
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        env:
+        - name: TZ
+          value: "Europe/Istanbul"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-password
+              key: redis-password
+        volumeMounts:
+          - mountPath: "/data"
+            name: taslak-redis
+      volumes:
+        - name: taslak-redis
+          persistentVolumeClaim:
+            claimName: taslak-redis
